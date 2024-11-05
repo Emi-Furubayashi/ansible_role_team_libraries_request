@@ -1,0 +1,8 @@
+shori_type,sequence,description,req_action,teamlib_playbookfile,need_submit,need_replace,template_jcl_filename,job_id,submit_location,submit_wait_sec,submit_success_rc,zos_find_matched_success,option
+NEW,1,(新規) ダミーデータセット削除,include_task,teamlib_del_dummy,yes,yes,template_jcl_teamlib_delete_dummy.txt,DD,local,300,0,0,
+NEW,2,(新規)ライブラリー作成,include_task,teamlib_create_libraries,yes,yes,template_jcl_teamlib_new_libraries.txt,AT,local,300	,0,over,
+DEL,3,(廃止) ライブラリー削除,include_task,teamlib_del_libraries,yes,yes,template_jcl_teamlib_delete_libraries.txt,DL,local,300,0,0,
+NEW,4,(共通) ダミーデータセット埋め,include_task,team_create_libraries,yes,yes,template_jcl_teamlib_allocate_dummy.txt,AL,local,300,0,N/A,
+NEW,5,(共通) 使用率確認,include_task,teamlib_check_volume_usage,yes,yes,template_jcl_check_volume_usage.txt,VU,local,300,0,100,
+DEL,6,(共通) ダミーデータセット埋め,include_task,team_create_libraries,yes,yes,template_jcl_teamlib_allocate_dummy.txt,AL,local,300,0,N/A,
+DEL,7,(共通) 使用率確認,include_task,teamlib_check_volume_usage,yes,yes,template_jcl_check_volume_usage.txt,VU,local,300,0,100,0,

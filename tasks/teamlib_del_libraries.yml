@@ -1,0 +1,154 @@
+- block:
+  ###
+  ### チームライブラリー　ダミーデータセット削除処理
+  ###
+
+  - name: '{{ lookup(''pipe'', ''date "+%Y/%m/%d %H:%M:%S"'') }}  ### チームライブラリー申請処理開始 ###'
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/teamlib_del_dummy.yml 開始"
+        - "### 処理名 {{ item_tran.description }}"
+        - "### ホスト名 {{ inventory_hostname }}"
+        - "### USERID名 {{ ansible_user }}"
+        - "#####################################################"        
+ 
+  ###
+  ###　(A) 実行用JOBカードを作る。
+  ###
+
+  - name: CREATE JOBCARD 
+    ansible.builtin.include_tasks: ./tasks/execute_create_jobcard.yml
+  
+  - name: CHECK JOBCARD 1
+    ansible.builtin.stat:
+      path: ./jobcard_edited.txt
+    register: register_file_existence_jobcard
+    delegate_to: localhost
+
+  - name: CHECK JOBCARD 2'
+    ansible.builtin.set_fact:
+      exec_success: false
+      exec_changed: false
+      exec_rc: 308
+      exec_message: "JOBカードが作成できませんでした。"
+    when: 
+      - not register_file_existence_jobcard.stat.exists
+
+  ###
+  ### (B) JCL本体を 編集しながら (A) JOBカードの後ろに追加(マージ)していく
+  ###
+
+   - name: KEEP EDITED JOBCARD
+    ansible.builtin.copy:
+      src: ./jobcard_edited.txt
+      dest: ./jcl_part_a.txt
+    delegate_to: localhost
+
+  - name: EXECUTE execute_create_jcl.ymla
+    ansible.builtin.include_tasks: ./tasks/execute_create_jcl.yml
+    loop: "{{ volume_name_hostname_list }}"
+    loop_control:
+      loop_var: item_replac_to
+      index_var: loop_count_replace_to
+    when:
+      - exec_rc is not in error_codes_list
+
+  ### 完成したJCLを確認
+
+  - name: CHECK JCL 1
+    ansible.builtin.stat:
+      path: "./jcl_merged.txt"
+    register: register_file_existence_jcl_merged
+    delegate_to: localhost
+
+  - name: CHECK JOBCARD 2'
+    ansible.builtin.set_fact:
+      exec_success: false
+      exec_changed: false
+      exec_rc: 309
+      exec_message: "!!!JCLが作成できませんでした。!!!"
+    when: 
+      - not register_file_existence_jobcard.stat.exists
+
+   - name: COPY FINAL JCL FILE
+    ansible.builtin.copy:
+      src: ./jcl_merged.txt
+      dest: ./jcl_final.txt
+    delegate_to: localhost  
+    when: 
+      - register_file_existence_jobcard.stat.exists
+      - exec_rc: is not in error_codes_list
+
+  ###
+
+  - name: SHOW FINAL JCL
+    ansible.builtin.shell:
+      cmd: "cat ./jcl_merged.txt"
+    register: register_show_jcl_final
+    delegate_to: localhost
+    when: 
+      - exec_rc: is not in error_codes_list
+
+  ###
+  ### JCLが完成したのでホストにSUBMITします
+  ###
+
+  - name: EXECUTE SUBMIT JCL
+    ansible.builtin.include_tasks: ./tasks/execute_zos_submitjcl.yml
+    vars:
+      path_jcl_final_file: ./jcl_merged.txt
+    when:
+      - exec_rc is not in error_codes_list
+
+  ###
+
+  - name: 存在チェック SEQUENTIAL
+    ibm.ibm_zos_core.zos_find:
+      patterns:
+          - T.TKJ011.SP3.DUMMY.FILE1.D*
+          - T.TKJ011.SP3.DUMMY.FILE2.D*
+          - T.TKJ011.SP3.DUMMY.FILE3.D*
+          - T.TKJ011.SP3.DUMMY.FILE4.D*
+        register: results_find_seq2
+
+        loop: "{{ volume_name_hostname_list }}"
+    loop_control:
+      loop_var: item_zosfind
+      index_var: loop_count_zosfind
+    when: exec_rc is not in error_codes_list
+
+  ###
+  ### zos_find等の後処理 複数ステップ
+  ### delegate_to: host名指定  が必要
+  ###
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+
+#  - name: 存在チェック データセット(ファイル)が見つかった場合
+#    ansible.builtin.debug: 
+#      msg:
+#        - "存在チェック zos_find 実行結果"
+#        - "データセット(ファイル) T.TKJ011.SP3.DUMMY.FILEx.D{{ desig_date }} が見つかりました。"
+#      when: 
+#        - results_find_seq2.matched == 4  
+#        - exec_rc is not in error_codes_list
+
+  - name: 完了
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/execute_create_jcl.yml 完了"
+        - "### 処理名 {{ item_tran.description }}"
+        - "#####################################################"        
+
+
+  ### 最後何するか未定。
+  ###
+  ###
+  ### ここで何するか、未定。　エラー処理入れる？？？　何を？？？　とりあえず tasks/main.yml に一旦戻って、
+  ### loop sr_hostname_list 一巡終了
+  ###
+  ###
+  ###

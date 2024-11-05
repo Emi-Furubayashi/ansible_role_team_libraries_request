@@ -1,0 +1,43 @@
+- block:
+  ###
+  ### REPLACE 実行
+  ###
+
+  - name: REPLACE処理開始
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/execute_replace_jcl.yml 開始 "
+        - "#####################################################"
+
+  ###
+  ### Execute replace module
+  ###
+  - name: REPLACE JCL
+    ansible.builtin.replace:
+      path: "{{ path_replaced_file }}"
+      regexp: "{{ key_from }}"
+      replace: "{{ key_to }}"
+    register: results_replace
+    delegate_to: localhost
+
+  - name: REPLACE処理完了
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/execute_replace_jcl.yml 完了 "
+        - "#####################################################"
+  ###
+  ### replace実施中に問題が起きた場合は、replaceをスキップしますが、
+  ### 後続処理は継続されます。必要な場合は、ログを exec_rc 307 で検索して確認してください。
+  ###
+  rescue: 
+    - name: REPLACE JCL ERROR
+      ansible.builtin.set_fact:
+        exec_success: false
+        exec_changed: false
+        exec_rc: 307
+        exec_message: "!!! REPLACE SKIPPED !!! 次の項目 {{ key_from,key_to }} の置換でエラーが発生しました。"
+  ###  
+  ###
+  ###

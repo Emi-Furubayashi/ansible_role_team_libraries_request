@@ -1,0 +1,25 @@
+### SYx用環境変数
+### SYXのインベントリの設定と同じ。
+###
+env_vars_test:
+  ansible_python_interpreter: /usr/lpp/IBM/cyp/v3r11/pyz/bin/python3
+  #PY_HOME: "/usr/lpp/IBM/cyp/v3r11/pyz"
+  #PY_BIN: "/usr/lpp/IBM/cyp/v3r11/pyz/bin"
+  #"PY_LIB: "/usr/lpp/IBM/cyp/v3r11/pyz/lib"
+  #ZO_HOME: /usr/lpp/IBM/zoautil
+  #ZO_BIN: "/usr/lpp/IBM/zoautil/bin"
+  #ZO_LIB: "/usr/lpp/IBM/zoautil/lib"
+  ZOAU_HOME: "/usr/lpp/IBM/zoautil"
+  PYTHONPATH: "/usr/lpp/IBM/zoautil/lib"
+  PATH: "/usr/lpp/IBM/zoautil/bin:/usr/lpp/IBM/cyp/v3r11/pyz/bin:/bin"
+  LIBPATH: "/usr/lpp/IBM/zoautil/lib:/usr/lpp/IBM/cyp/v3r11/pyz/lib:/usr/lib:/lib:."
+  _BPXK_AUTOCVT: "ON"
+  _CEE_RUNOPTS: "FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)"
+  _TAG_REDIR_ERR: "txt"
+  _TAG_REDIR_IN: "txt"
+  _TAG_REDIR_OUT: "txt"
+  LANG: "C"
+  PYTHONPYCACHEPREFIX: "/u/userhome/tkj011/tmp"
+###
+###
+###

@@ -1,0 +1,124 @@
+- block:
+  ###
+  ### SharepointからCSVをダウンロードする
+  ###
+  - name: << exec_download_from_sharepoint set_fact Initialize variables for SharePoint >>
+    ansible.builtin.set_fact:
+      driveId : "{{ drive_Id }}"
+      folderId: "{{ folder_Id }}"
+  
+  - name: << exec_download_from_sharepoint set_fact Get refresh_token from ansible network type credential >>
+    ansible.builtin.set_fact:
+      uploadfile_to_sharepoint_refresh_token: "{{ lookup('env', 'ANSIBLE_NET_PASSWORD') }}"
+    when: ( uploadfile_to_sharepoint_refresh_token is not defined ) or ( uploadfile_to_sharepoint_refresh_token | length == 0 )
+  
+  - name: << exec_download_from_sharepoint include_role Create access token >>
+    ansible.builtin.include_role:
+      name: ansible_role_sharepointapi_operation
+      tasks_from: main.yml
+    vars:
+      requested_play: "gettokenusingrefreshtoken"
+      refreshToken: "{{ uploadfile_to_sharepoint_refresh_token }}"
+      ansible_become: false
+  
+  - name: << exec_download_from_sharepoint Debug msg >>
+    ansible.builtin.debug: 
+      msg: "{{ result_token.meta }}"
+  
+  - name: << exec_download_from_sharepoint set_fact Set access token >>
+    ansible.builtin.set_fact:
+      access_token: "{{ result_token.meta.access_token }}"
+      new_refresh_token: "{{ result_token.meta.refresh_token}}"
+    no_log: true
+  
+  - name: << exec_download_from_sharepoint debug paramater confirmation - sharepoint_sourceFilename >>
+    ansible.builtin.debug:
+      msg: "{{ sharepoint_sourceFilename }}"
+    when: sharepoint_sourceFilename is defined
+  
+  - name: << exec_download_from_sharepoint debug paramater confirmation - folder_Id >>
+    ansible.builtin.debug:
+      msg: "{{ folder_Id }}"
+    when: folder_Id is defined
+  
+  - name: << exec_download_from_sharepoint include_role Get the collection of drive item >>
+    ansible.builtin.include_role:
+      name: ansible_role_sharepointapi_operation
+      tasks_from: main.yml
+    vars:
+      requested_play: "childrenitems"
+      driveId: "{{ drive_Id }}"
+      folderId: "{{ folder_Id }}"
+      accessToken: "{{ access_token }}"
+  
+  - name: << exec_download_from_sharepoint set_fact get sharepoint_fileId from result_drivechildren.meta >>
+    vars:
+      filename: "{{ sharepoint_sourceFilename }}"
+    set_fact:
+      sharepoint_fileId: "{{ result_drivechildren.meta | from_json | json_query(\"value[?name=='\" + filename + \"'].id\") }}"
+    when: result_drivechildren.meta is defined
+  
+  - name: "sharepoint_fileIdの取得に失敗したとき"
+    ansible.builtin.set_fact:
+      exec_success: false
+      exec_changed: false
+      exec_rc: 301
+      exec_message: "sharepoint_fileIdの取得に失敗しました。"
+    when: 
+      - sharepoint_fileId is not defined
+      - sharepoint_fileId | length == 0
+  
+  - name: << exec_download_from_sharepoint-debug show sharepoint_fileId >>
+    ansible.builtin.debug:
+      msg: "{{ sharepoint_fileId[0] }}"
+    when: 
+      - exec_rc != 301
+  
+  - name: << exec_download_from_sharepoint-import_Role download operation >>
+    ansible.builtin.import_role:
+      name: ansible_role_sharepointapi_operation
+      tasks_from: main.yml
+    vars:
+      requested_play: "download"
+      fileId: "{{ sharepoint_fileId[0] }}"
+      saveLocationPath: "{{ localhost_saveLocationPath }}"
+      filename: "{{ sharepoint_sourceFilename }}"
+      driveId: "{{ drive_Id }}"
+      accessToken: "{{ access_token }}"
+    when: exec_rc != 301
+  
+  - name: << exec_download_from_sharepoint-stat confirm file existence >>
+    ansible.builtin.stat:
+      path: "{{ localhost_saveLocationPath }}/{{ sharepoint_sourceFilename }}"
+    register: stat_result
+  
+  - name: "SharepointからのCSVファイルダウンロードに失敗したとき"
+    ansible.builtin.set_fact:
+      exec_success: false
+      exec_changed: false
+      exec_rc: 302
+      exec_message: "SharepointからのCSVファイルダウンロードに失敗しました。"
+    when: 
+      - exec_rc != 301
+      - stat_result.stat.exists == false
+  
+  - name: << exec_download_from_sharepoint-debug show stat_result >>
+    ansible.builtin.debug:
+      msg: "{{ stat_result.stat }}"
+    when: exec_rc != 301 and exec_rc != 302
+  
+  - name: confirm file existence {{ localhost_saveLocationPath }}/{{ sharepoint_sourceFilename }}
+    ansible.builtin.shell: "ls -l {{ localhost_saveLocationPath }}/{{ sharepoint_sourceFilename }}"
+    register: file_existence_result
+    when: exec_rc != 301 and exec_rc != 302
+  
+  - name: << exec_download_from_sharepoint-show file_existence_result >>
+    ansible.builtin.debug:
+      msg: "{{ file_existence_result.stdout_lines }}"
+    when: exec_rc != 301 and exec_rc != 302
+  ###
+  ###
+  ###     
+  delegate_to: localhost
+  connection: local
+  become: false

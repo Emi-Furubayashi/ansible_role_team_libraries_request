@@ -1,0 +1,9 @@
+---
+### 
+###
+###
+ansible_role_team_libraries_request_documentation: "https://github.kyndryl.net/cacf-jp-mei/"
+exec_automation_default: "JPN_TEAM_LIBRARY_REQUEST"
+###
+###
+###

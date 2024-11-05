@@ -1,0 +1,37 @@
+---
+###
+###
+###
+### テストのとき extr vars に指定
+### DESCRIPTION": "チームライブラリ申請（新規・廃止）"
+### JPNTARGETHOSTLIST : "{{ JPN_TEAM_LIBRARY_REQUEST }}"
+###
+###
+sr_hostname_list: []
+###
+path_sagyoname_list:		
+  - classfication_name: "JPN_TEAM_LIBRARY_REQUEST"
+    sagyomei: "teamlib"
+  - classfication_name: "DUMMY_TEST_HENKO"
+    sagyomei: "testtest"
+  - classfication_name: "DUMMY_PARMLIB_HENKO"
+    sagyomei: "parmlib"
+###
+error_codes_list : 
+  - "301"
+  - "302"
+  - "303"
+  - "304"
+  - "305"
+  - "306"
+  - "307"
+  - "308"
+  - "309"
+  - "310"
+  - "311"
+  - "325"
+  - "326"
+  - "360"
+###
+###
+###

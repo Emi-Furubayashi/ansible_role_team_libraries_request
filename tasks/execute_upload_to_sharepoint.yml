@@ -1,0 +1,74 @@
+---
+- name: initialize variables
+  ansible.builtin.set_fact:
+    result_find_workdir: ""
+
+- block:
+    - name: Get refresh_token from ansible network type credential
+      ansible.builtin.set_fact:
+        uploadfile_to_sharepoint_refresh_token: "{{ lookup('env', 'ANSIBLE_NET_PASSWORD') }}"
+      when: ( uploadfile_to_sharepoint_refresh_token is not defined ) or ( uploadfile_to_sharepoint_refresh_token | length == 0 )
+      no_log: true
+
+    - name: Create access token
+      ansible.builtin.include_role:
+        name: ansible_role_sharepointapi_operation
+        tasks_from: main.yml
+      vars:
+        sharepointapi_operation_requested_play: "gettokenusingrefreshtoken"
+        sharepointapi_operation_refresh_token: "{{ uploadfile_to_sharepoint_refresh_token }}"
+      no_log: true
+
+    - name: Set access token
+      ansible.builtin.set_fact:
+        access_token_last: "{{ result_token.meta.access_token }}"
+      no_log: true
+  delegate_to: localhost
+  connection: local
+  run_once: true
+
+# workdir配下のファイルは全てアップロード
+- name: find files to upload
+  ansible.builtin.find:
+    paths: "{{ mf_team_library_workdir }}"
+    file_type: file
+  register: result_find_workdir
+  delegate_to: localhost
+
+- name: upload file created by jcl to sharepoint
+  ansible.builtin.include_tasks:
+    file: upload_sharepoint_sub.yml
+  vars:
+    sharepointapi_operation_requested_play: "upload"
+    sharepointapi_operation_folder_id: "{{ mf_team_library_upload_folder_id }}"
+    sharepointapi_operation_source_file_path: "{{ mf_team_library_workdir }}/{{ item_workdir_list.path | basename }}"
+    sharepointapi_operation_filename: "{{ item_workdir_list.path | basename }}"
+    sharepointapi_operation_drive_id: "{{ mf_team_library_drive_id }}"
+    sharepointapi_operation_access_token: "{{ access_token_last }}"
+  when: item_workdir_list.path | basename != "dummy.txt"
+  loop: "{{ result_find_workdir.files }}"
+  loop_control:
+    loop_var: item_workdir_list
+
+- name: debug uploaded url
+  ansible.builtin.debug:
+    var: mf_team_library_upload
+    verbosity: 3
+
+# - name: set upload file url summary
+#   ansible.builtin.set_fact:
+#     mf_compress_meiji_library_sp_upload: "{{ mf_team_library_upload | default([]) + [ temp_upload_weburl ] }}"
+#   vars:
+#     temp_summary_file: "/{{ CHANGE }}_{{ inventory_hostname }}_summary.txt"
+#     temp_upload_weburl: >-
+#       {{ ( result_upload.meta | from_json )['webUrl'] | default('weburl_not_available') | regex_replace('/upload/.*',temp_summary_file) }}
+#   when: exec_rc in [0,1]
+
+# - name: set upload file url error summary
+#   ansible.builtin.set_fact:
+#     mf_compress_meiji_library_sp_upload: "{{ mf_team_library_upload | default([]) + [ temp_upload_weburl ] }}"
+#   vars:
+#     temp_summary_file: "/{{ CHANGE }}_{{ inventory_hostname }}_error_summary.txt"
+#     temp_upload_weburl: >-
+#       {{ ( result_upload.meta | from_json )['webUrl'] | default('weburl_not_available') | regex_replace('/upload/.*',temp_summary_file) }}
+#   when: not exec_rc in [0,1]

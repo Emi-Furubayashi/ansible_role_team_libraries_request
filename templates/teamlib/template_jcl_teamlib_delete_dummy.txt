@@ -1,0 +1,4 @@
+//*-+----1----+----2----+----3----+----4----+----5----+----6          
+//*//DELETE   EXEC PGM=IEFBR14                                           
+//*//DUMMY01  DD DISP=(OLD,DELETE,DELETE),UNIT=3390,VOL=SER=@VOLUME@,      
+//*//*         DSN=T.TKJ011.DENSAN.DUMMY.@VOLUME@.DUMMY          

@@ -1,0 +1,2 @@
+//@USER@ID@ JOB MSGCLASS=V,CLASS=T,NOTIFY=&SYSUID
+//*---------------------------------------------*

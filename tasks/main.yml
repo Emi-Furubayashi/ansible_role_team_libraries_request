@@ -1,0 +1,235 @@
+- block:
+  ###
+  ### メイン処理開始　開始を知らせるメッセージを出力する
+  ###
+
+  - name: '{{ lookup(''pipe'', ''date "+%Y/%m/%d %H:%M:%S"'') }}  ### 開始 Role ansible_role_team_libraries_request MAIN ###'
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### ロール ansible_role_team_libraries_request 処理開始"
+        - "### ホスト名 {{ inventory_hostname }}"
+        - "### USERID名 {{ ansible_user }}"
+        - "### 作業名 {{ DESCRIPTION }}"
+        - "### 処理番号 {{ CHANGE }}"
+        - "###         {{ REQUEST }}"
+        - "###         {{ TASK }}"
+        - "###         {{ RITM }}"
+        - "#####################################################"
+        
+  ###
+  ### 初期設定
+  ###
+
+  - name: INItiALIXE EXEC VARIABLES'
+    ansible.builtin.set_fact:
+      exec_success: false
+      exec_changed: false
+      exec_rc: 1
+      exec_message: "初期値"
+      exec_automation: "{{ exec_automation_default }}" # 要設定
+      # affected_host: "{{ inventory_hostname }}"
+
+  ### サービスカタログから連携される基本必須項目の確認
+
+  - name: CHECK CASSFICATION
+    ansible.builtin.debug:
+      msg: "### CLASSFICATION IS {{ CLASSFICATION }} ###"
+    when:
+      - CLASSIFICATION is defined
+      - CLASSIFICATION | length > 0
+  ### 後でエラー設定
+  - name: CHECK CASSFICATION
+    ansible.builtin.debug:
+      msg: "### CASSFICATION is not defined ###"
+    when: CLASSIFICATION is not defined
+
+  - name: CHECK DESCRIPTION
+    ansible.builtin.debug:
+      msg: "### DESCRIPTION IS {{ DESCRIPTION }} ###"
+    when:
+      - DESCRIPTION is defined
+      - DESCRIPTION | length > 0 
+  ### 後でエラー設定
+  - name: CHECK DESCRIPTION
+    ansible.builtin.debug:
+      msg: "### DESCRIPTION is not defined ###"
+    when: DESCRIPTION is not defined
+
+  - name: CHECK JPNTARGETHOSTLIST
+    ansible.builtin.debug:
+      msg: "### JPNTARGETHOSTLIST IS {{ JPNTARGETHOSTLIST }} ###"
+    when:
+      - JPNTARGETHOSTLIST is defined
+      - JPNTARGETHOSTLIST | length > 0 
+  ### 後でエラー設定
+  - name: CHECK JPNTARGETHOSTLIST 
+    ansible.builtin.debug:
+      msg: "### JPNTARGETHOSTLIST is not defined ###"
+    when: JPNTARGETHOSTLIST is not defined
+
+
+  - name: CHECK ITDHOSTNAME
+    ansible.builtin.debug:
+      msg: "### ITDHOSTNAME IS {{ ITDHOSTNAME }} ###"
+    when:
+      - ITDHOSTNAME is defined
+      - ITDHOSTNAME | length > 0 
+    ### 後でエラー設定
+  - name: CHECK ITDHOSTNAME
+    ansible.builtin.debug:
+      msg: "### ITDHOSTNAME is not defined ###"
+    when: ITDHOSTNAME is not defined
+    ### 後でエラー設定
+  - name: CHECK request_type
+    ansible.builtin.debug set_fact:
+      msg: "### SR入力処理タイプ is {{ request_type | default('not defined')}} ###"
+
+
+  ###
+  ### 処理用ホスト名リストを定義
+  ###
+
+  - name: PUT JPNTARGETHOSTLIST INTO FILE BY LINEINFILE STEP1
+    ansible.builtin.set_fact:
+      sr_hostname_list: "{{ JPNTARGETHOSTLIST.split(',') }}"
+
+  - name: SHOW NEW HOST LIST 
+    ansible.builtin.debug:
+      msg: "### sr_hostname_list is {{ sr_hostname_list }} ###"
+
+  ###
+  ### CLASSFICATION から sagyo_mei と path_sagyo_name を設定
+  ###
+  
+  - name: SET SAGYOMEI
+    ansible.builtin.set_fact:
+      path_sagyo_name: "{{ item.sagyomei }} ###"
+    loop: "{{ path_sagyoname_list }}"
+    when: item.classfication_name == CLASSFICATION
+
+  - name: CHECK path_sagyo_name
+    ansible.builtin.debug:
+      msg: "### 作業別パス名 is {{ path_sagyo_name | default('not defined')}} ###"
+
+  ###
+  ### SharepointからCSVファイルをダウンロードする準備
+  ###
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+
+  ###
+  ### SharepointからCSVファイルをダウンロード実行
+  ###
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+
+  ###
+  ### SharepointからダウンロードしたCSVファイルの存在チェック
+  ###
+  - name: CONFIRM CSV PATH EXISTENCE
+    ansible.builtin.stat:
+      path: ./files/{{path_sagyo_name}}/main_request.csv
+    register: register_file_existence_main_request_csv
+    delegate_to: localhost
+
+  ### 
+  ### 主申請情報のCSVファイルをリスト化する
+  ###   
+  - name: EXEC read_csv
+    community.general.read_csv: 
+        path: ./files/{{path_sagyo_name}}/main_request.csv
+    register: main_request_csv
+    when: register_file_existence_main_request_csv == true
+    delegate_to: localhost
+
+  ###
+  ### 主入力CSVファイルを改名してSharepointへアップロード実行 複数ステップ
+  ###
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+
+  ###
+  ### 可能なら Ansible joblog全体をSharepointへアップロード実行 複数ステップ
+  ###
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+
+  ###
+  ### ホストJoblogをSharepointへアップロード実行 複数ステップ
+  ### Jobログは複数ある。まとめてアップロード。
+  ###
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+
+  ###
+  ### 完了処理 分岐 失敗の場合
+  ###
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+  - name: '{{ lookup(''pipe'', ''date "+%Y/%m/%d %H:%M:%S"'') }}  ### 連携 Role ansible_role_team_libraries_request MAIN ###'
+    ansible.builtin.include_role:
+      name: returncode
+    vars:
+      rc_support: account
+      rc_group: component_playbook
+      rc_number: "{{ exec_rc }}"
+      rc_message: "{{ exec_message }}"
+      documentation: "{{ ansible_role_team_libraries_request }}{{ ansible_parent_role_names | first }}"
+    when: exec_rc is in error_codes_list
+  ###
+  ### 完了処理 分岐 成功の場合
+  ###
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+  #----------> 開発予定 コメント
+  - name: '{{ lookup(''pipe'', ''date "+%Y/%m/%d %H:%M:%S"'') }}  ### 終了 Role ansible_role_team_libraries_request MAIN ###'
+    ansible.builtin.include_role:
+      name: returncode
+    vars:
+      rc_support: account
+      rc_group: component_playbook
+      rc_number: "{{ exec_rc }}"
+      rc_message: "{{ exec_message }}"
+      documentation: "{{ ansible_role_team_libraries_request_documentation }}{{ ansible_parent_role_names | first }}"
+    when: exec_rc is not in error_codes_list
+
+  - name: '{{ lookup(''pipe'', ''date "+%Y/%m/%d %H:%M:%S"'') }}  ### 応答 Role ansible_role_team_libraries_request MAIN ###'
+    ansible.builtin.include_role:
+      name: returncode
+    vars:
+      rc_success: true
+      rc_message: "{{ inventory_hostname }} : SUCCESS"
+      documentation: "{{ aansible_role_team_libraries_request_documentation }}{{ ansible_parent_role_names | first }}"
+    when: exec_rc == 0
+
+  ###
+  ### クローズメッセージ
+  ###
+
+  - name: '{{ lookup(''pipe'', ''date "+%Y/%m/%d %H:%M:%S"'') }}  ### クローズ Role ansible_role_team_libraries_request MAIN ###'
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### ロール ansible_role_team_libraries_request 処理終了"
+        - "### ホスト名 {{ inventory_hostname }}"
+        - "### USERID名 {{ ansible_user }}"
+        - "### 作業名 {{ DESCRIPTION }}"
+        - "### 処理番号 {{ CHANGE }}"
+        - "###         {{ REQUEST }}"
+        - "###         {{ TASK }}"
+        - "###         {{ RITM }}"
+        - "#####################################################"
+
+  delegate_to: localhost
+  connection: local
+  become: false
+###
+###
+###

@@ -1,0 +1,81 @@
+---
+- block:
+  ###
+  ### Submit a JCL Job
+  ### 2024年04月現時点での接続上の事情により　文字化けが起きるので、encodingの設定を from IBM-1047 to IBM-1047 としているが、
+  ### 本来正しい指定は、from UTF-8 to IBM-1047
+
+  - name: '{{ lookup(''pipe'', ''date "+%Y/%m/%d %H:%M:%S"'') }}  ### チームライブラリー申請JOB 実行開始 ###'
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/execute_zos_submitjcl.yml" 開始
+        - "### 処理名 {{ item_tran.description }}"
+        - "### ホスト名 {{ inventory_hostname }}"
+        - "### USERID名 {{ ansible_user }}"
+        - "### JCL名    {{ item_tran.template_jcl_filename }}"
+        - "#####################################################"      
+
+  - name: << exec_zos_submitjcl  Submit JCL and wait up to 180 seconds for completion >>
+    ibm.ibm_zos_core.zos_job_submit:
+      src: "{{ path_jcl_final_file }}"
+      location: "LOCAL"
+      wait_time_s: 600
+      encoding: 
+        from: "IBM-1047"
+        to: "IBM-1047"
+      # max_rc: 99
+    register: results_submit_jcl
+    delegate_to: "{{ inventory_host }}"
+  ###
+  ###
+  ###  
+  - name: SHOW JOBLOG
+    ansible.builtin.debug: 
+      msg: 
+        - "### Return codes ###"
+        - "### JOBNAME  {{ results_submit_jcl.jobs[0].job_name }}"
+        - "### JOBID    {{ results_submit_jcl.jobs[0].job_id }}"
+        - "### RC       {{ results_submit_jcl.jobs[0].ret_code.code }}"
+        - "### RC MSG   {{ results_submit_jcl.jobs[0].ret_code.msg }}"
+        - "### MSGCODE  {{ results_submit_jcl.jobs[0].ret_code.msg_code }}"
+        - "### MSGTEXT  {{ results_submit_jcl.jobs[0].ret_code.msg_text }}"
+        - "### RC STEPS {{ results_submit_jcl.jobs[0].ret_code.steps }}"
+  ###
+  ### 結果確認
+  ###
+  rescue: 
+    - name: << exec_zos_submitjcl  RESCUE JOB実行が失敗した場合 set_fact exec_rc 309 >>
+      ansible.builtin.set_fact:
+        exec_success: false
+        exec_changed: false
+        exec_rc: 309
+        exec_message: "### zos_job_submitに失敗しました。###"
+      when:
+        - results_jcl_submit.jobs[0].ret_code.code != 0
+    - name: << results when JCL SUBMIT 異常終了 >>
+      ansible.builtin.debug: 
+        var: results_submit_jcl
+
+- block:
+  - name: SUBMIT JCL {{ item_tran.template_jclfile_name }} 成功しました
+    ansible.builtin.set_fact:
+      exec_success: true
+      exec_changed: true
+      exec_rc: 0
+      exec_message: "### zos_job_submitが成功しました。###"
+    when:
+      - results_jcl_submit.jobs[0].ret_code.code == 0
+  ###
+  ###
+  ###
+  delegate_to: localhost
+  connection: local
+  become: false
+- always:  
+  - name: '### JOB実行処理完了 ###'
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/execute_zos_submitjcl.yml 完了"
+        - "#####################################################"        

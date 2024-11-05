@@ -1,0 +1,176 @@
+- block:
+  ###
+  ### チームライブラリー　メイン処理開始
+  ###
+
+  - name: '{{ lookup(''pipe'', ''date "+%Y/%m/%d %H:%M:%S"'') }}  ### チームライブラリー申請処理開始 ###'
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/teamlib_main.yml"
+        - "### ホスト名 {{ inventory_hostname }}"
+        - "### USERID名 {{ ansible_user }}"
+        - "#####################################################"        
+ 
+  ###
+  ###　申請ファイル main_request_csv.list の内容を検証する。
+  ###
+
+  - name: '### ALLOCATE EMPTY 2 LISTS ###'
+    ansible.builtin.set_fact:
+      request_data_hostname_list: []
+      volume_name_hostname_list: []
+      csv_requesttype_list: []
+      csv_hostname_list: []
+
+  ### 1. 申請ファイルの申請区分を確認
+
+  - name: '### CHECK 申請区分 STEP 1'
+    ansible.builtin.set_fact:
+      csv_requesttype_list: "{{ csv_requesttype_list + [item.申請区分] | unique }}"
+    loop: "{{ main_request_csv.list }}"
+
+  - name: '### CHECK 申請区分 STEP 2'
+    ansible.builtin.set_fact:
+      sr_request_type: "新規"
+    when: request_type == "NEW"
+
+  - name: '### CHECK 申請区分 STEP 3'
+    ansible.builtin.set_fact:
+      sr_request_type: "廃止"
+    when: request_type == "DEL"
+
+  - name: '### CHECK 申請区分 STEP 4'
+    ansible.builtin.set_fact:
+      exec_success: false
+      exec_changed: false
+      exec_rc: 360
+      exec_message: "申請区分{{ item }} がサービスカタログの選択値 {{ request_type }} とちがいます。作業は中止されます。"
+    loop: "{{ csv_requesttype_list }}"
+    when: item != sr_request_type
+
+  ### 2. 申請ファイルの使用システムを確認
+
+  - name: '### CHECK 使用システム STEP 1'
+    ansible.builtin.set_fact:
+      csv_hostname_list: "{{ csv_hostname_list + [item.使用システム] | unique }}"
+    loop: "{{ main_request_csv.list }}"
+    when: exec_rc is not in error_codes_list
+
+  - name: '### CHECK 使用システム STEP 2'
+    ansible.builtin.set_fact:
+      exec_success: false
+      exec_changed: false
+      exec_rc: 361
+      exec_message: "使用システム{{ item }} がサービスカタログの選択値とちがいます。作業は中止されます。"
+    loop: "{{ csv_hostname_list }}"
+    when: 
+      - item is not in sr_hostname_list
+      - exec_rc is not in error_codes_list
+
+  ###
+  ### 申請書を使用システム別に分けて処理する為、申請書を絞り込む。
+  ###
+
+  - name: '### CREATE request_data_hostname.list ###'
+    ansible.builtin.set_fact:
+      request_data_hostname_list : "{{ request_data_hostname_list + [item] }}"
+    loop: "{{ main_request_csv.list }}"
+    when: 
+      - Item.使用システム == inventory_hostname
+      - exec_rc is not in error_codes_list
+  
+  ###
+  ### システム別申請書のVOLUMEリストを作る。
+  ###
+
+  - name: '### CREATE volume_name_hostname.list STEP 1 ###'
+    ansible.builtin.set_fact:
+      volume_work_list : "{{ volume_work_list + [item.作成VOL] | unique }}"
+    loop: "{{ request_data_hostname_list  }}"
+    when: exec_rc is not in error_codes_list
+  
+  ###
+
+  - name: '### CREATE volume_name_hostname.list STEP 2 ###'
+    ansible.builtin.set_fact:
+      volume_name_hostname_list : "{{ volume_name_hostname_list + [ volume_work_list | unique ] }}"
+    when: exec_rc is not in error_codes_list
+  
+  ###   
+
+  - name: SHOW LIST VOLUME
+    ansible.builtin.debug:
+      msg: "{{ volume_name_hostname_list }}"
+    when: exec_rc is not in error_codes_list
+
+  ### 
+  ###　トランザクション表に基づく処理が始まる
+  ###   
+
+  - name: CONVERT REPLACE KEY FROMTO TABLE FROM CSV TO LIST STEP 1
+    ansible.builtin.stat:
+      path: ./files/teamlib/teamlib_keyfromto.csv
+    register: register_file_existence1_keyfromto
+    when: exec_rc is not in error_codes_list
+    delegate_to: localhost
+
+###
+  - name: CONVERT REPLACE KEY FROMTO TABLE FROM CSV TO LIST STEP 2
+    community.general.read_csv: 
+      path: ./files/teamlib/teamlib_keyfromto.csv
+    register: teamlib_keyfromto_csv
+    when: 
+      - register_file_existence1_keyfromto.stat.exists == true
+      - exec_rc is not in error_codes_list
+    delegate_to: localhost
+
+###
+
+  - name: CONVERT TRANSACTION FILE FROM CSV TO LIST STEP 1
+    ansible.builtin.stat:
+      path: ./files/teamlib/teamlib_transaction.csv
+    register: register_file_existence1_transaction
+    when: exec_rc is not in error_codes_list
+    delegate_to: localhost
+
+  ### 
+
+  - name: CONVERT TRANSACTION FILE FROM CSV TO LIST STEP 2
+    community.general.read_csv: 
+      path: ./files/teamlib/teamlib_transaction.csv
+    register: teamlib_transaction_csv
+    when: 
+      - register_file_existence1_transaction.stat.exists == true
+      - exec_rc is not in error_codes_list
+    delegate_to: localhost
+
+  ###
+  ### チームライブラリートランザクション処理開始
+  ###
+
+  - name: '{{ lookup(''pipe'', ''date "+%Y/%m/%d %H:%M:%S"'') }}  ### teamlibrary start each task.yml ###'
+    ansible.builtin.include_tasks: ./tasks/{{ item_tran.teamlib_playbookfile }}.yml
+    loop_control:
+      loop_var: item_tran
+      index_var: loop_count_tran
+    loop: "{{ teamlib_transaction_csv.list }}"
+    when:
+      - item_tran.shori_type == sr_request_type
+      - exec_rc is not in error_codes_list
+
+  ###
+  ###
+  ###
+  ### ここで何するか、未定。　エラー処理入れる？？？　何を？？？　とりあえず tasks/main.yml に一旦戻って、
+  ### loop sr_hostname_list 一巡終了
+  ###
+  ###
+  ###
+
+  - name: '### JOBカード作成完了 ###'
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/teamlib_main.yml 完了"
+        - "#####################################################"        

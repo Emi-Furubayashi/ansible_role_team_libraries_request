@@ -1,0 +1,42 @@
+- block:
+  ###
+  ### JCL JOBカード作成専用
+  ###
+
+  - name: '{{ lookup(''pipe'', ''date "+%Y/%m/%d %H:%M:%S"'') }}  ### JOBカード作成処理開始 ###'
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/execute_create_jobcard.yml" 開始
+        - "### 処理名 {{ item_tran.description }}"
+        - "### ホスト名 {{ inventory_hostname }}"
+        - "### USERID名 {{ ansible_user }}"
+        - "#####################################################"        
+ 
+  ###
+  ###　実行用JOBカードを作る。
+  ###
+
+  - name: COPY JOBCARD TEMPLATE
+    ansible.builtin.copy:
+      src: "./templates/jobcard/template_jobcard.txt"
+      dest: ./jobcard_edited.txt
+    delegate_to: localhost
+
+  - name: REPLACE JOBCARD
+    ansible.builtin.include_tasks: ./tasks/execute_replace_jcl.yml
+    vars: 
+      path_replaced_file: ./jobcard_edited.txt
+      key_from: "@USER@ID@"
+      key_to: "{{ ansible.user,item_tran.job_id }}"
+
+  - name: '### JOBカード作成完了 ###'
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/execute_create_jobcard.yml 完了"
+        - "#####################################################"        
+
+  ### 最後何するか未定。
+  ###
+  ###

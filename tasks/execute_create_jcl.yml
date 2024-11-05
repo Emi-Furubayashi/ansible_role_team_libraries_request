@@ -1,0 +1,64 @@
+- block:
+  ###
+  ### JCL作成用Playbook テンプレートを使って何個もJCLを作る場合用
+  ###
+
+  - name: JCL作成開始
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/execute_create_jcl.yml" 開始
+        - "### 処理名 {{ item_tran.description }}"
+        - "#####################################################"        
+
+  - name: COPY ORIGINAL JCL FILE TO TEMPORARY JCL WORKK FILE
+    ansible.builtin.copy:
+      src: "./templates/{{ path_sagyo_name }}/{{ item_tran.template_jcl_filename }}"
+      dest: ./jcl_edited.txt
+    delegate_to: localhost
+
+  - name: REPLACE LOOP
+    ansible.builtin.include_tasks: ./tasks/execute_replace_jcl.yml
+    vars: 
+      path_replaced_file: ./jcl_edited.txt
+      key_from: "{{ item_replace.from }}"
+      key_to: "{{ item_replace_to }}"
+    loop_control:
+      loop_var: item_replace
+      index_var: loop_count_replace
+    loop: "{{ teamlib_keyfromto_csv.list }}"
+    when: item_replace.template_jcl_filename == item_tran.template_jcl_filename
+
+  - name: ADD EDITED FILE TO PREVIOUS FILE (MERGE) BY CAT COMMAND
+    ansible.builtin.shell:
+      cmd: "cat ./jcl_part_a.txt ./jcl_edited.txt > ./jcl_part_b.txt"
+    delegate_to: localhost
+  ### サンプルだと ファイル3の次に ファイル1 ファイル2の順でコンカチされます
+  ### cmd: "cat ファイル1 ファイル2 >> ファイル3
+
+  - name: KEEP EDITED FILE
+    ansible.builtin.copy:
+      src: ./jcl_part_b.txt"
+      dest: ./jcl_part_a.txt   
+    delegate_to: localhost
+
+  ### マージしたファイルを別名で保管　完成品
+
+  - name: KEEP EDITED FILE
+    ansible.builtin.copy:
+      src: ./jcl_part_b.txt"
+      dest: ./jcl_merged.txt   
+    delegate_to: localhost
+
+###
+
+  - name: JCL作成完了
+    ansible.builtin.debug: 
+      msg: 
+        - "#####################################################"
+        - "### Playbook tasks/execute_create_jcl.yml 完了"
+        - "#####################################################"        
+
+  ### 最後何するか未定。
+  ###
+  ###
